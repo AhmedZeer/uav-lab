@@ -19,6 +19,6 @@ gym.register(
     kwargs={
         "env_cfg_entry_point": f"{__name__}.uav_lab_1_marl_env_cfg:UavLab1MarlEnvCfg",
         "skrl_ippo_cfg_entry_point": f"{agents.__name__}:skrl_ippo_cfg.yaml",
-        "skrl_mappo_cfg_entry_point": f"{agents.__name__}:skrl_mappo_cfg.yaml",
+        "skrl_cfg_entry_point": f"{agents.__name__}:skrl_mappo_cfg.yaml",
     },
 )
