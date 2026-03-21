@@ -13,8 +13,8 @@ class BasicFixedWing1SceneCfg(InteractiveSceneCfg):
         spawn=sim_utils.GroundPlaneCfg(
             size=(10000.0, 10000.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=5.0,
-                dynamic_friction=10.0,
+                static_friction=7.0,
+                dynamic_friction=20.0,
             ),
         ),
     )
