@@ -22,18 +22,6 @@ parser.add_argument("--start_speed", type=float, default=40.0, help="Initial for
 parser.add_argument("--start_yaw_deg", type=float, default=0.0, help="Initial yaw [deg].")
 parser.add_argument("--debug_print_hz", type=float, default=5.0, help="Console print rate [Hz].")
 parser.add_argument(
-    "--surface_reference_mode",
-    type=str,
-    default="config_minus_com",
-    choices=["config", "config_minus_com", "zero"],
-    help="Reference vector used for omega x r and r x F in the surface model.",
-)
-parser.add_argument(
-    "--zero_surface_alpha0",
-    action="store_true",
-    help="Zero all surface alpha_0 trim angles for debugging.",
-)
-parser.add_argument(
     "--log_frame_debug",
     action="store_true",
     help="Log root/root-link/body-link frame state side by side when available.",
@@ -281,8 +269,6 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
             print(f"[WARN]: Failed to create UI controls: {e}")
 
     surface_cfgs = default_fixedwing_surface_configs()
-    if args_cli.zero_surface_alpha0:
-        surface_cfgs = [replace(cfg, alpha_0_deg=0.0) for cfg in surface_cfgs]
     surface_model = SurfaceAeroModel(surface_cfgs, num_envs=num_envs, sim_dt=sim_dt, device=device)
     surface_names = surface_model.surface_names
 
@@ -423,7 +409,6 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
     print(
         "[INFO]: Running manual surface-aero scene "
         f"(num_surfaces={surface_model.num_surfaces}, ui={args_cli.ui}, max_thrust={max_thrust:.1f}N, "
-        f"ref_mode={args_cli.surface_reference_mode}, zero_alpha0={args_cli.zero_surface_alpha0})."
     )
 
     try:
@@ -474,7 +459,6 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
                 w_body=w_body,
                 cmd=surface_cmd,
                 body_com_b=body_com_b,
-                reference_mode=args_cli.surface_reference_mode,
             )
 
             total_forces = _clamp(thrust_force + aero_out["force_b"], -MAX_FORCE, MAX_FORCE) #* 0.5
