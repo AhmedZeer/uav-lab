@@ -11,16 +11,41 @@ parser.add_argument("--num_envs", type=int, default=1, help="Number of environme
 parser.add_argument("--ui", action="store_true", help="Enable UI controls for thrust/roll/pitch/yaw.")
 parser.add_argument("--vis_markers", action="store_true", help="Show frame/force visualization markers.")
 parser.add_argument("--force_vis_scale", type=float, default=0.02, help="Scale for force arrow length.")
-parser.add_argument("--thrust", type=float, default=0.58, help="Initial thrust command [0, 1].")
+parser.add_argument("--thrust", type=float, default=0.0, help="Initial thrust command [0, 1].")
 parser.add_argument("--roll", type=float, default=0.0, help="Initial roll command [-1, 1].")
 parser.add_argument("--pitch", type=float, default=0.0, help="Initial pitch command [-1, 1].")
 parser.add_argument("--yaw", type=float, default=0.0, help="Initial yaw command [-1, 1].")
-parser.add_argument("--max_thrust", type=float, default=100.0, help="Maximum thrust [N].")
+parser.add_argument("--max_thrust", type=float, default=200.0, help="Maximum thrust [N].")
 parser.add_argument("--thrust_tau", type=float, default=0.02, help="First-order thrust lag time constant [s].")
-parser.add_argument("--start_alt", type=float, default=30.0, help="Initial altitude [m].")
+parser.add_argument(
+    "--propeller_anim",
+    action="store_true",
+    help="Enable propeller joint actuation for visual spin. This can affect dynamics.",
+)
+parser.add_argument(
+    "--propeller_anim_effort",
+    type=float,
+    default=25.0,
+    help="Propeller joint effort target at full throttle for visual animation.",
+)
+parser.add_argument(
+    "--propeller_anim_threshold",
+    type=float,
+    default=0.1,
+    help="Throttle threshold above which propeller animation effort is applied.",
+)
+parser.add_argument(
+    "--propeller_anim_sign",
+    type=float,
+    default=1.0,
+    help="Sign applied to the propeller joint effort. Flip to -1 if the mesh spins the wrong way.",
+)
+parser.add_argument("--start_alt", type=float, default=10.0, help="Initial altitude [m].")
 parser.add_argument("--start_speed", type=float, default=40.0, help="Initial forward speed [m/s].")
 parser.add_argument("--start_yaw_deg", type=float, default=0.0, help="Initial yaw [deg].")
 parser.add_argument("--debug_print_hz", type=float, default=5.0, help="Console print rate [Hz].")
+parser.add_argument("--telemetry_ui", action="store_true", help="Show live aerodynamic telemetry in an Isaac Sim window.")
+parser.add_argument("--telemetry_hz", type=float, default=10.0, help="Telemetry UI update rate [Hz]. Set <= 0 for every step.")
 parser.add_argument(
     "--log_frame_debug",
     action="store_true",
@@ -59,7 +84,7 @@ from isaaclab.utils import math as math_utils
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 from uav_lab_1.robots.follow_camera import FollowCameraConfig, SmoothedFollowCamera
 from uav_lab_1.robots.surface_aero import SurfaceAeroModel, default_fixedwing_surface_configs
-from uav_lab_1.scenes import BasicFixedWing1SceneCfg
+from uav_lab_1.scenes import BasicFixedWing1SceneCfg, MudFixedWing1SceneCfg
 
 MAX_FORCE = 10000.0
 MAX_TORQUE = 10000.0
@@ -112,6 +137,60 @@ class ManualSurfaceControlWindow:
             float(self._models["yaw"].as_float),
             float(self._models["max_thrust"].as_float),
         )
+
+
+class SurfaceTelemetryWindow:
+    def __init__(self, surface_names: list[str], env_id: int):
+        import omni.ui as ui
+
+        self._surface_names = surface_names
+        self._window = ui.Window("Surface Aero Telemetry", width=560, height=420)
+        self._header = None
+        self._summary = None
+        self._surface_labels = []
+
+        with self._window.frame:
+            with ui.VStack(spacing=6, height=0):
+                self._header = ui.Label(f"env {env_id}", height=20)
+                self._summary = ui.Label("", height=120, alignment=ui.Alignment.LEFT_TOP)
+                ui.Separator(height=2)
+                for name in surface_names:
+                    self._surface_labels.append(ui.Label(f"{name}: --", height=26, alignment=ui.Alignment.LEFT_TOP))
+
+    def update(
+        self,
+        env_id: int,
+        speed: float,
+        body_rates: tuple[float, float, float],
+        total_force: tuple[float, float, float],
+        total_torque: tuple[float, float, float],
+        surface_actuation: list[float],
+        surface_torque: list[tuple[float, float, float]],
+    ):
+        force_amp = math.sqrt(sum(component * component for component in total_force))
+        torque_amp = math.sqrt(sum(component * component for component in total_torque))
+        p_rate, q_rate, r_rate = body_rates
+
+        if self._header is not None:
+            self._header.text = f"env {env_id}"
+        if self._summary is not None:
+            self._summary.text = (
+                f"Speed: {speed:7.2f} m/s\n"
+                f"Force amplitude: {force_amp:7.2f} N\n"
+                f"Torque amplitude: {torque_amp:7.2f} N m\n"
+                f"Body rates [p q r]: {p_rate:7.3f}  {q_rate:7.3f}  {r_rate:7.3f} rad/s\n"
+                f"Total force [x y z]: {total_force[0]:7.2f}  {total_force[1]:7.2f}  {total_force[2]:7.2f} N\n"
+                f"Total torque [x y z]: {total_torque[0]:7.2f}  {total_torque[1]:7.2f}  {total_torque[2]:7.2f} N m"
+            )
+
+        for label, name, actuation, torque in zip(
+            self._surface_labels, self._surface_names, surface_actuation, surface_torque, strict=False
+        ):
+            torque_mag = math.sqrt(sum(component * component for component in torque))
+            label.text = (
+                f"{name}: act={actuation:+5.2f}  |T|={torque_mag:7.3f} N m  "
+                f"T=[{torque[0]:+7.3f}, {torque[1]:+7.3f}, {torque[2]:+7.3f}]"
+            )
 
 
 def _clamp(x: torch.Tensor, lo: float, hi: float) -> torch.Tensor:
@@ -239,6 +318,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
     if len(body_ids) == 0:
         body_ids = [0]
     body_id = int(body_ids[0])
+    # propeller_joint_ids, _ = uav.find_joints("propeller_joint")
+    propeller_joint_ids, _ = uav.find_joints("propeller_joint")
+    propeller_joint_ids = [int(j) for j in propeller_joint_ids]
 
     device = uav.device
     num_envs = uav.num_instances
@@ -265,12 +347,22 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
                 yaw=yaw_cmd,
                 max_thrust=max_thrust,
             )
+            print(f"[INFO]: trpy = {thrust_cmd}, {roll_cmd}, {pitch_cmd}, {yaw_cmd}")
         except Exception as e:
             print(f"[WARN]: Failed to create UI controls: {e}")
 
     surface_cfgs = default_fixedwing_surface_configs()
     surface_model = SurfaceAeroModel(surface_cfgs, num_envs=num_envs, sim_dt=sim_dt, device=device)
     surface_names = surface_model.surface_names
+    telemetry_ui = None
+    telemetry_interval = (1.0 / float(args_cli.telemetry_hz)) if float(args_cli.telemetry_hz) > 0.0 else 0.0
+    last_telemetry_t = -1.0e9
+    if args_cli.telemetry_ui:
+        try:
+            telemetry_ui = SurfaceTelemetryWindow(surface_names=surface_names, env_id=env_i)
+            debug_interval = None
+        except Exception as e:
+            print(f"[WARN]: Failed to create telemetry UI: {e}")
 
     surface_mix = torch.tensor(
         [
@@ -286,6 +378,8 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
 
     throttle_state = torch.zeros((num_envs,), device=device, dtype=torch.float32)
     thrust_tau = max(1.0e-4, float(args_cli.thrust_tau))
+    propeller_effort_target = torch.zeros((num_envs, 1), device=device, dtype=torch.float32)
+    propeller_joint_speed = torch.zeros((num_envs,), device=device, dtype=torch.float32)
 
     log_writer = None
     log_file = None
@@ -374,6 +468,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
                     f"surf_force_{name}_x",
                     f"surf_force_{name}_y",
                     f"surf_force_{name}_z",
+                    f"surf_total_torque_{name}_x",
+                    f"surf_total_torque_{name}_y",
+                    f"surf_total_torque_{name}_z",
                     f"surf_aero_torque_{name}_x",
                     f"surf_aero_torque_{name}_y",
                     f"surf_aero_torque_{name}_z",
@@ -409,7 +506,18 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
     print(
         "[INFO]: Running manual surface-aero scene "
         f"(num_surfaces={surface_model.num_surfaces}, ui={args_cli.ui}, max_thrust={max_thrust:.1f}N, "
+        f"(cli_trpy={args_cli.thrust}, {args_cli.roll}, {args_cli.pitch}, {args_cli.yaw}"
     )
+    if args_cli.propeller_anim and propeller_joint_ids:
+        print(
+            "[INFO]: Propeller effort animation enabled "
+            f"(joint_ids={propeller_joint_ids}, max_effort={args_cli.propeller_anim_effort:.1f}, "
+            f"threshold={args_cli.propeller_anim_threshold:.2f}, sign={args_cli.propeller_anim_sign:+.1f})."
+        )
+    elif propeller_joint_ids:
+        print("[INFO]: Propeller animation is disabled. Use --propeller_anim to enable joint actuation.")
+    else:
+        print("[WARN]: Could not find 'propeller_joint'; propeller animation is disabled.")
 
     try:
         while simulation_app.is_running():
@@ -435,6 +543,19 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
             thrust_cmd_t = _clamp(torch.full((num_envs,), thrust_cmd, device=device), 0.0, 1.0)
             throttle_state = throttle_state + (sim_dt / thrust_tau) * (thrust_cmd_t - throttle_state)
             throttle_state = _clamp(throttle_state, 0.0, 1.0)
+            if args_cli.propeller_anim and propeller_joint_ids:
+                propeller_effort_target = torch.where(
+                    throttle_state.unsqueeze(-1) >= float(args_cli.propeller_anim_threshold),
+                    throttle_state.unsqueeze(-1)
+                    * float(args_cli.propeller_anim_effort)
+                    * float(args_cli.propeller_anim_sign),
+                    torch.zeros_like(propeller_effort_target),
+                )
+                uav.set_joint_effort_target(propeller_effort_target, joint_ids=propeller_joint_ids)
+                propeller_joint_speed = uav.data.joint_vel[:, propeller_joint_ids[0]]
+            else:
+                propeller_effort_target.zero_()
+                propeller_joint_speed.zero_()
             thrust_force = torch.stack(
                 [
                     throttle_state * float(max_thrust),
@@ -459,10 +580,42 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
                 w_body=w_body,
                 cmd=surface_cmd,
                 body_com_b=body_com_b,
+                reference_mode="config",
             )
 
             total_forces = _clamp(thrust_force + aero_out["force_b"], -MAX_FORCE, MAX_FORCE) #* 0.5
             total_torques = _clamp(aero_out["torque_b"], -MAX_TORQUE, MAX_TORQUE) #* 0.3
+
+            if telemetry_ui is not None and (telemetry_interval == 0.0 or (sim_time - last_telemetry_t) >= telemetry_interval):
+                telemetry_ui.update(
+                    env_id=env_i,
+                    speed=float(torch.linalg.norm(v_body[env_i]).item()),
+                    body_rates=(
+                        float(w_body[env_i, 0].item()),
+                        float(w_body[env_i, 1].item()),
+                        float(w_body[env_i, 2].item()),
+                    ),
+                    total_force=(
+                        float(total_forces[env_i, 0].item()),
+                        float(total_forces[env_i, 1].item()),
+                        float(total_forces[env_i, 2].item()),
+                    ),
+                    total_torque=(
+                        float(total_torques[env_i, 0].item()),
+                        float(total_torques[env_i, 1].item()),
+                        float(total_torques[env_i, 2].item()),
+                    ),
+                    surface_actuation=[float(aero_out["actuation"][env_i, s].item()) for s in range(surface_model.num_surfaces)],
+                    surface_torque=[
+                        (
+                            float(aero_out["surface_torque_b"][env_i, s, 0].item()),
+                            float(aero_out["surface_torque_b"][env_i, s, 1].item()),
+                            float(aero_out["surface_torque_b"][env_i, s, 2].item()),
+                        )
+                        for s in range(surface_model.num_surfaces)
+                    ],
+                )
+                last_telemetry_t = sim_time
 
             com_positions = torch.zeros((num_envs, 1, 3), device=device)
             com_positions[:, 0, :] = body_com_b
@@ -521,7 +674,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
                     f"drl=({root_link_delta[0]:6.3f},{root_link_delta[1]:6.3f},{root_link_delta[2]:6.3f}) "
                     f"cmd=({roll_cmd:5.2f},{pitch_cmd:5.2f},{yaw_cmd:5.2f},{thrust_cmd:5.2f}) "
                     f"F=({total_forces[env_i,0].item():7.2f},{total_forces[env_i,1].item():7.2f},{total_forces[env_i,2].item():7.2f}) "
-                    f"T=({total_torques[env_i,0].item():7.2f},{total_torques[env_i,1].item():7.2f},{total_torques[env_i,2].item():7.2f})"
+                    f"T=({total_torques[env_i,0].item():7.2f},{total_torques[env_i,1].item():7.2f},{total_torques[env_i,2].item():7.2f})\n"
+                    f"PropEff=({propeller_effort_target[env_i].item():7.2f}) "
+                    f"PropVel=({propeller_joint_speed[env_i].item():7.2f})"
                 )
                 pad = " " * max(0, last_debug_len - len(line))
                 print(f"\r{line}{pad}", end="", flush=True)
@@ -596,6 +751,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene, mar
                             float(aero_out["surface_force_b"][env_i, s, 0].item()),
                             float(aero_out["surface_force_b"][env_i, s, 1].item()),
                             float(aero_out["surface_force_b"][env_i, s, 2].item()),
+                            float(aero_out["surface_torque_b"][env_i, s, 0].item()),
+                            float(aero_out["surface_torque_b"][env_i, s, 1].item()),
+                            float(aero_out["surface_torque_b"][env_i, s, 2].item()),
                             float(aero_out["surface_aero_torque_b"][env_i, s, 0].item()),
                             float(aero_out["surface_aero_torque_b"][env_i, s, 1].item()),
                             float(aero_out["surface_aero_torque_b"][env_i, s, 2].item()),
@@ -628,7 +786,7 @@ def main():
     sim = sim_utils.SimulationContext(sim_cfg)
     sim.set_camera_view([-15.0, -8.0, 8.0], [0.0, 0.0, args_cli.start_alt])
 
-    scene_cfg = BasicFixedWing1SceneCfg(args_cli.num_envs, env_spacing=2.0)
+    scene_cfg = MudFixedWing1SceneCfg(args_cli.num_envs, env_spacing=2.0)
     scene = InteractiveScene(scene_cfg)
     markers = _create_visual_markers() if args_cli.vis_markers else None
 

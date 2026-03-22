@@ -12,5 +12,13 @@ from uav_lab_1.robots import USD_PATHS
 
 FIXEDWING_1_CONFIG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(usd_path=USD_PATHS['fixedwing_1']),
-    actuators={"propeller": ImplicitActuatorCfg(joint_names_expr=["propeller_joint"], damping=None, stiffness=None)},
+    actuators={
+        "propeller": ImplicitActuatorCfg(
+            joint_names_expr=["propeller_joint"],
+            stiffness=0.0,
+            damping=0.0,
+            effort_limit_sim=5000.0,
+            velocity_limit_sim=5000.0,
+        )
+    },
 )

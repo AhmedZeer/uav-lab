@@ -30,8 +30,11 @@ def default_fixedwing_surface_configs() -> list[LiftingSurfaceConfig]:
           than the original paper/PyFlyt reference airframe.
         - Full wingspan is 4.44 m, wing chord is 0.48 m, and the outboard
           aileron span is 1.31 m per side.
-        - The horizontal-tail half-span is measured at about 1.31 m per side.
-        - The tail-arm / vertical-tail extent measurement is about 1.19 m.
+        - The horizontal tail is measured at about 1.06 m span and 0.23 m
+          chord.
+        - The vertical tail is measured at about 0.49 m height and 0.32 m
+          chord.
+        - The tail reference point is placed about 1.41 m aft along body -X.
         - `alpha_0_deg` is neutralized to 0.0 deg because the old paper trim
           was injecting large zero-command lift on this asset.
     """
@@ -41,11 +44,11 @@ def default_fixedwing_surface_configs() -> list[LiftingSurfaceConfig]:
     center_wing_span = full_wing_span - (2.0 * aileron_span)
     aileron_center_y = (0.5 * center_wing_span) + (0.5 * aileron_span)
 
-    # tail_arm_x = -1.19
-    tail_arm_x = -0.8
-    h_tail_full_span = 2.62
-    tail_chord = wing_chord * (0.2 / 0.3)
-    v_tail_height = 1.19
+    tail_arm_x = -1.41
+    h_tail_full_span = 1.06
+    h_tail_chord = 0.23
+    v_tail_chord = 0.32
+    v_tail_height = 0.49
     v_tail_center_z = 0.5 * v_tail_height
 
     return [
@@ -66,7 +69,7 @@ def default_fixedwing_surface_configs() -> list[LiftingSurfaceConfig]:
             alpha_stall_n_deg=-9.0,
             # cd_0=0.01,
             # cd_0=0.03,
-            cd_0=0.003,
+            cd_0=0.03,
             deflection_limit_deg=30.0,
             tau=0.05,
         ),
@@ -87,7 +90,7 @@ def default_fixedwing_surface_configs() -> list[LiftingSurfaceConfig]:
             alpha_stall_n_deg=-9.0,
             # cd_0=0.01,
             # cd_0=0.03,
-            cd_0=0.003,
+            cd_0=0.03,
             deflection_limit_deg=30.0,
             tau=0.05,
         ),
@@ -100,7 +103,7 @@ def default_fixedwing_surface_configs() -> list[LiftingSurfaceConfig]:
             # cl_alpha_2d=6.283,
             cl_alpha_2d=1.5,
             # cl_alpha_2d=0.8,
-            chord=tail_chord,
+            chord=h_tail_chord,
             span=h_tail_full_span,
             flap_to_chord=0.3,
             eta=0.65,
@@ -119,7 +122,7 @@ def default_fixedwing_surface_configs() -> list[LiftingSurfaceConfig]:
             forward_unit_b=(1.0, 0.0, 0.0),
             # cl_alpha_2d=6.283,
             cl_alpha_2d=1.5,
-            chord=tail_chord,
+            chord=v_tail_chord,
             span=v_tail_height,
             flap_to_chord=0.3,
             eta=0.65,
@@ -318,7 +321,8 @@ class SurfaceAeroModel:
         w_body: torch.Tensor,
         cmd: torch.Tensor,
         body_com_b: torch.Tensor | None = None,
-        reference_mode: str = "config",
+        # reference_mode: str = "config",
+        reference_mode: str = "config_minus_com",
     ):
         """
         Compute aggregated aerodynamic force and torque in body frame.
