@@ -22,3 +22,8 @@ FIXEDWING_1_CONFIG = ArticulationCfg(
         )
     },
 )
+
+CUBE_CONFIG = ArticulationCfg(
+    spawn=sim_utils.UsdFileCfg(usd_path=USD_PATHS['cube']),
+    actuators={}
+)

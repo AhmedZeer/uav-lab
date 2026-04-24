@@ -1,10 +1,11 @@
 import os
 
 import isaaclab.sim as sim_utils
+from isaaclab.sim import RigidBodyMaterialCfg
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.scene import InteractiveSceneCfg
 
-from uav_lab_1.robots.fixedwing_1 import FIXEDWING_1_CONFIG
+from uav_lab_1.robots.fixedwing_1 import FIXEDWING_1_CONFIG, CUBE_CONFIG
 
 _THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -52,3 +53,25 @@ class MudFixedWing1SceneCfg(InteractiveSceneCfg):
 
     # robot
     uav = FIXEDWING_1_CONFIG.replace(prim_path="{ENV_REGEX_NS}/fixedwing_1")
+
+
+class MudCubeSceneCfg(InteractiveSceneCfg):
+    """Designs the scene."""
+
+    # Mud terrain with puddles
+    ground = AssetBaseCfg(
+        prim_path="/World/defaultGroundPlane",
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=os.path.join(_THIS_DIR, "usd", "puddles", "Puddles.usd"),
+        ),
+        init_state=AssetBaseCfg.InitialStateCfg(
+            pos=(0, 0, 0), rot=(0.0 , 0.0, 0.0, 0.0)
+        )
+    )
+    # # lights
+    # dome_light = AssetBaseCfg(
+    #     prim_path="/World/Light", spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.75, 0.75, 0.75))
+    # )
+
+    # robot
+    uav = CUBE_CONFIG.replace(prim_path="{ENV_REGEX_NS}/cube_1")
