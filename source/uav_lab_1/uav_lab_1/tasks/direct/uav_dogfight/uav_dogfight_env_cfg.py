@@ -28,7 +28,7 @@ class UavDogfightEnvCfg(DirectMARLEnvCfg):
     sim: SimulationCfg = SimulationCfg(dt=1 / 120, render_interval=decimation)
 
     # scene
-    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1, env_spacing=500.0, replicate_physics=True)
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1024, env_spacing=500.0, replicate_physics=True)
     ground_usd_path = os.path.join(os.path.dirname(uav_scenes.__file__), "usd", "puddles", "Puddles.usd")
 
     # debug visualization
