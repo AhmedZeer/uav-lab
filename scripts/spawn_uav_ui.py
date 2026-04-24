@@ -343,6 +343,8 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
         v_body = math_utils.quat_apply_inverse(quat_wxyz, v_world)
         w_body = math_utils.quat_apply_inverse(quat_wxyz, w_world)
         roll, pitch, yaw = _euler_from_quat_wxyz(quat_wxyz)
+        lin_vel_mag = torch.linalg.norm(uav.data.root_lin_vel_b[0], dim=-1)
+        print(f"{lin_vel_mag=}")
         # print(f"CoM_b : {body_com_b[0]}")
         # print(f"pos_w : {pos_world[0]}")
         # print(f"RPY : {yaw[0]:.2f}, {pitch[0]:.2f}, {roll[0]:.2f}")
