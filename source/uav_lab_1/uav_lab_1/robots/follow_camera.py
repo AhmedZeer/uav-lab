@@ -27,15 +27,12 @@ class SmoothedFollowCamera:
     ):
         self._sim = sim
         self._device = device
+        self._sim_dt = float(sim_dt)
+        self._num_envs = int(num_envs)
         self.cfg = cfg if cfg is not None else FollowCameraConfig()
 
-        if num_envs <= 0:
-            self.env_id = 0
-        else:
-            self.env_id = int(max(0, min(num_envs - 1, int(self.cfg.env_id))))
-
-        tau = max(0.0, float(self.cfg.smooth_tau))
-        self._alpha = 1.0 if tau <= 0.0 else float(sim_dt) / (tau + float(sim_dt))
+        self.env_id = self._clamp_env_id(self.cfg.env_id)
+        self._update_alpha()
 
         self._heading = None
         self._eye = None
@@ -44,6 +41,55 @@ class SmoothedFollowCamera:
         self._forward_local = torch.tensor([[1.0, 0.0, 0.0]], device=self._device)
         self._eye_height_offset = torch.tensor([0.0, 0.0, float(self.cfg.height)], device=self._device)
         self._target_height_offset = torch.tensor([0.0, 0.0, float(self.cfg.target_height_offset)], device=self._device)
+
+    def _clamp_env_id(self, env_id: int) -> int:
+        if self._num_envs <= 0:
+            return 0
+        return int(max(0, min(self._num_envs - 1, int(env_id))))
+
+    def _update_alpha(self) -> None:
+        tau = max(0.0, float(self.cfg.smooth_tau))
+        self._alpha = 1.0 if tau <= 0.0 else self._sim_dt / (tau + self._sim_dt)
+
+    def update_config(
+        self,
+        *,
+        env_id: int | None = None,
+        distance: float | None = None,
+        height: float | None = None,
+        lookahead: float | None = None,
+        smooth_tau: float | None = None,
+        target_height_offset: float | None = None,
+        reset_smoothing: bool = False,
+    ) -> None:
+        """Update camera parameters while the simulation is running."""
+        if env_id is not None:
+            next_env_id = self._clamp_env_id(env_id)
+            reset_smoothing = reset_smoothing or next_env_id != self.env_id
+            self.env_id = next_env_id
+            self.cfg.env_id = next_env_id
+        if distance is not None:
+            self.cfg.distance = float(distance)
+        if height is not None:
+            self.cfg.height = float(height)
+            self._eye_height_offset = torch.tensor([0.0, 0.0, float(height)], device=self._device)
+        if lookahead is not None:
+            self.cfg.lookahead = float(lookahead)
+        if smooth_tau is not None:
+            self.cfg.smooth_tau = float(smooth_tau)
+            self._update_alpha()
+        if target_height_offset is not None:
+            self.cfg.target_height_offset = float(target_height_offset)
+            self._target_height_offset = torch.tensor(
+                [0.0, 0.0, float(target_height_offset)], device=self._device
+            )
+        if reset_smoothing:
+            self.reset_smoothing()
+
+    def reset_smoothing(self) -> None:
+        self._heading = None
+        self._eye = None
+        self._target = None
 
     @staticmethod
     def _normalize(vec: torch.Tensor) -> torch.Tensor:
