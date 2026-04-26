@@ -1,10 +1,10 @@
-![UAV Lab Thumbnail](assets/uav-lab-thumb.png)
+[![UAV Lab Thumbnail](assets/uav-lab-thumb.png)](https://youtu.be/vJGbIgS7SR4?si=85nzMvPeHLRmRvV5)
 
 # UAV Lab
 End-to-end software stack to train fixed-wing UAV policies.
 Check the [demo!](https://youtu.be/vJGbIgS7SR4?si=85nzMvPeHLRmRvV5)
 
-![UAV Lab Demo](assets/demo1.gif)
+[![UAV Lab Demo](assets/demo1.gif)](https://youtu.be/vJGbIgS7SR4?si=85nzMvPeHLRmRvV5)
 
 ## Software Stack
 ```mermaid
