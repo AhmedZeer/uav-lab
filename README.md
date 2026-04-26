@@ -1,135 +1,62 @@
-# Template for Isaac Lab Projects
+[![UAV Lab Thumbnail](assets/uav-ab-thumb.png)](https://youtu.be/vJGbIgS7SR4?si=85nzMvPeHLRmRvV5)
 
-## Overview
+# UAV Lab
+End-to-end software stack to train fixed-wing UAV policies.
+Check the [demo!](https://youtu.be/vJGbIgS7SR4?si=85nzMvPeHLRmRvV5)
 
-This project/repository serves as a template for building projects or extensions based on Isaac Lab.
-It allows you to develop in an isolated environment, outside of the core Isaac Lab repository.
+[![UAV Lab Demo](assets/demo1.png)](https://youtu.be/vJGbIgS7SR4?si=85nzMvPeHLRmRvV5)
 
-**Key Features:**
+## Software Stack
+```mermaid
+flowchart TB
+    subgraph L1[Operator and Learning Interfaces]
+        direction LR
+        UI[User Interfaces<br/>Manual setpoint UI<br/>Follow camera UI<br/>Debug scripts]
+        TP[Training and Playback<br/>skrl train/play<br/>RL checkpoints]
+    end
 
-- `Isolation` Work outside the core Isaac Lab repository, ensuring that your development efforts remain self-contained.
-- `Flexibility` This template is set up to allow your code to be run as an extension in Omniverse.
+    subgraph L2[Decision Layer]
+        direction LR
+        ENV[Task Environments<br/>Dogfight / multi-UAV scenarios<br/>Observations, rewards, resets]
+        POL[RL Policies and Commands<br/>Policy outputs<br/>Manual throttle, roll, pitch setpoints]
+    end
 
-**Keywords:** extension, template, isaaclab
+    subgraph L3[Aircraft Simulation]
+        direction LR
+        CTRL[Flight Controller<br/>Fixed-wing autopilot]
+        AERO[Aerodynamics Engine<br/>Lift, drag, moments, prop thrust]
+        FM[Flight Mechanics<br/>Rigid-body state and force application]
+    end
 
-## Installation
+    subgraph L4[Scene and Runtime]
+        direction LR
+        SCENE[Scene and Assets<br/>Terrain, lighting, UAV USD assets]
+        ISAAC[Isaac Lab / Isaac Sim<br/>Scene orchestration and rendering]
+        PHYSX[PhysX Backend<br/>Rigid-body simulation]
+    end
 
-- Install Isaac Lab by following the [installation guide](https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html).
-  We recommend using the conda or uv installation as it simplifies calling Python scripts from the terminal.
+    UI --> ENV
+    TP --> ENV
+    ENV --> POL
+    POL --> CTRL
+    CTRL --> AERO
+    AERO --> FM
+    FM --> SCENE
+    SCENE --> ISAAC
+    ISAAC --> PHYSX
 
-- Clone or copy this project/repository separately from the Isaac Lab installation (i.e. outside the `IsaacLab` directory):
-
-- Using a python interpreter that has Isaac Lab installed, install the library in editable mode using:
-
-    ```bash
-    # use 'PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-    python -m pip install -e source/uav_lab_1
-
-- Verify that the extension is correctly installed by:
-
-    - Listing the available tasks:
-
-        Note: It the task name changes, it may be necessary to update the search pattern `"Template-"`
-        (in the `scripts/list_envs.py` file) so that it can be listed.
-
-        ```bash
-        # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-        python scripts/list_envs.py
-        ```
-
-    - Running a task:
-
-        ```bash
-        # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-        python scripts/<RL_LIBRARY>/train.py --task=<TASK_NAME>
-        ```
-
-    - Running a task with dummy agents:
-
-        These include dummy agents that output zero or random agents. They are useful to ensure that the environments are configured correctly.
-
-        - Zero-action agent
-
-            ```bash
-            # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/zero_agent.py --task=<TASK_NAME>
-            ```
-        - Random-action agent
-
-            ```bash
-            # use 'FULL_PATH_TO_isaaclab.sh|bat -p' instead of 'python' if Isaac Lab is not installed in Python venv or conda
-            python scripts/random_agent.py --task=<TASK_NAME>
-            ```
-
-### Set up IDE (Optional)
-
-To setup the IDE, please follow these instructions:
-
-- Run VSCode Tasks, by pressing `Ctrl+Shift+P`, selecting `Tasks: Run Task` and running the `setup_python_env` in the drop down menu.
-  When running this task, you will be prompted to add the absolute path to your Isaac Sim installation.
-
-If everything executes correctly, it should create a file .python.env in the `.vscode` directory.
-The file contains the python paths to all the extensions provided by Isaac Sim and Omniverse.
-This helps in indexing all the python modules for intelligent suggestions while writing code.
-
-### Setup as Omniverse Extension (Optional)
-
-We provide an example UI extension that will load upon enabling your extension defined in `source/uav_lab_1/uav_lab_1/ui_extension_example.py`.
-
-To enable your extension, follow these steps:
-
-1. **Add the search path of this project/repository** to the extension manager:
-    - Navigate to the extension manager using `Window` -> `Extensions`.
-    - Click on the **Hamburger Icon**, then go to `Settings`.
-    - In the `Extension Search Paths`, enter the absolute path to the `source` directory of this project/repository.
-    - If not already present, in the `Extension Search Paths`, enter the path that leads to Isaac Lab's extension directory directory (`IsaacLab/source`)
-    - Click on the **Hamburger Icon**, then click `Refresh`.
-
-2. **Search and enable your extension**:
-    - Find your extension under the `Third Party` category.
-    - Toggle it to enable your extension.
-
-## Code formatting
-
-We have a pre-commit template to automatically format your code.
-To install pre-commit:
-
-```bash
-pip install pre-commit
+    style L1 fill:#e8f4ff,stroke:#3b82f6,stroke-width:1px
+    style L2 fill:#ecfdf3,stroke:#16a34a,stroke-width:1px
+    style L3 fill:#fff3e0,stroke:#f97316,stroke-width:1px
+    style L4 fill:#f3e8ff,stroke:#8b5cf6,stroke-width:1px
 ```
 
-Then you can run pre-commit with:
+## Stack Layers
 
-```bash
-pre-commit run --all-files
-```
-
-## Troubleshooting
-
-### Pylance Missing Indexing of Extensions
-
-In some VsCode versions, the indexing of part of the extensions is missing.
-In this case, add the path to your extension in `.vscode/settings.json` under the key `"python.analysis.extraPaths"`.
-
-```json
-{
-    "python.analysis.extraPaths": [
-        "<path-to-ext-repo>/source/uav_lab_1"
-    ]
-}
-```
-
-### Pylance Crash
-
-If you encounter a crash in `pylance`, it is probable that too many files are indexed and you run out of memory.
-A possible solution is to exclude some of omniverse packages that are not used in your project.
-To do so, modify `.vscode/settings.json` and comment out packages under the key `"python.analysis.extraPaths"`
-Some examples of packages that can likely be excluded are:
-
-```json
-"<path-to-isaac-sim>/extscache/omni.anim.*"         // Animation packages
-"<path-to-isaac-sim>/extscache/omni.kit.*"          // Kit UI tools
-"<path-to-isaac-sim>/extscache/omni.graph.*"        // Graph UI tools
-"<path-to-isaac-sim>/extscache/omni.services.*"     // Services tools
-...
-```
+- `User Interfaces`: Manual control panels, follow-camera controls, and visualization scripts.
+- `Training and Playback`: skrl-based training, policy checkpointing, and policy replay.
+- `Task Environments`: Multi-UAV task definitions, observations, rewards, resets, and termination logic.
+- `Guidance and Control`: RL/manual setpoints and fixed-wing autopilot loops.
+- `Aircraft Simulation`: Flight mechanics, aerodynamics, and force/torque application.
+- `Scene and Assets`: Isaac Lab scene configuration, terrain, lighting, and UAV assets.
+- `Simulation Runtime`: Isaac Sim, Isaac Lab, and PhysX execution backend.
