@@ -1,4 +1,4 @@
-![UAV Lab Thumbnail](assets/uav-ab-thumb.png)
+![UAV Lab Thumbnail](assets/uav-lab-thumb.png)
 
 # UAV Lab
 End-to-end software stack to train fixed-wing UAV policies.
